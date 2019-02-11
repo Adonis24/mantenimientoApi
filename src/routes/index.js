@@ -15,19 +15,21 @@ router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
 const users = require('../controllers/users');
+const equipos = require('../controllers/equipos');
 
 router.get('/users',users.get);
-
 router.get('/users/:id',users.getById);
-
 router.post('/users',users.add);
-
 router.put('/users/:id',users.update);
-
 router.delete('/users/:id',users.delete);
-
 router.get('/prueba',users.prueba);
-
 router.get('/prueba2',users.prueba2);
+
+router.get('/equipos',equipos.get);
+router.get('/equipos/:id',equipos.getById);
+router.post('/equipos',equipos.add);
+router.put('/equipos/:id',equipos.update);
+router.delete('/equipos/:id',equipos.delete);
+
 
 module.exports = router;

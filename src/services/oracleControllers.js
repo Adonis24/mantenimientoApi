@@ -7,24 +7,79 @@ require('../services/connection').conectar().then(connectionResp=>{
     console.log('database conected');
     
 });
+/**
+ * transforma un string con la primera letra en mayuscula
+ * @param {string} string nombre a capitalzar
+ */
+let  capitalizeFirstLetter =(string)=> {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
 
+/**
+ * extrae los encabezados de una tabla
+ * y los pone en el formato que exige material desing y bootstrap_vue
+ * @param {Array} rows datos de la base de datos
+ */
+let getColumns =(rows)=>{
+    let columns = [];
+    if(Array.isArray(rows)){
+        if(typeof rows[0] === 'object'){
+            for (const key in rows[0]) {
+                let column ={};
+                column.label = capitalizeFirstLetter(key.toLowerCase());
+                column.field = key.toLowerCase();
+                column.key = key;
+                columns.push(column);
+            }
+        }      
+    }else if(typeof rows === 'object'){
+        for (const key in rows) {
+            let column ={};
+            column.label = capitalizeFirstLetter(key);
+            column.field = key.toLowerCase();
+            columns.push(column);
+        }
+    }
+    return columns; 
+}
 
-// exports.getListNormal =(sql) =>{
-//     return new Promise((resolve,reject)=>{
-//         connection.execute(sql,
-//             function(err, result) {
-//               if (err) {
-//                 console.error(err.message);
-//                 reject(err.message)
-//                 //doRelease(connection);
-//                 return;
-//               }
-//               console.log(result.rows);
-//               resolve(result);
-//               //doRelease(connection);
-//             });
-//     });
-// }
+/**
+ * la idea es que esta funcion extraiga todos las 
+ * columnas y y el tipo de dato de cada columna de una consulta
+ * @param {string} tablename nombre de la tabla
+ * @param {*} columnsOfConsult 
+ */
+let getColumnsAndMetadata =async (tablename,columnsOfConsult)=>{
+    let select =
+    `SELECT 
+        user_tab_columns.table_name,user_tab_columns.DATA_TYPE,user_tab_columns.COLUMN_NAME,user_tab_columns.NULLABLE
+    FROM 
+        user_tab_columns
+    where 
+        user_tab_columns.table_name = '${tablename}'`
+   
+
+    let columnsAndMetadata = await executeSql(select);  
+    let columnsResp = await catchConsultToJSON(columnsAndMetadata);
+    let columns = [];
+    console.log(columnsResp)
+    for (let i = 0; i < columnsResp.length; i++) {
+        const element = columnsResp[i];    
+        let column ={};
+        column.label = capitalizeFirstLetter(element.COLUMN_NAME.toLowerCase());
+        column.field = element.COLUMN_NAME.toLowerCase();
+        column.key = element.COLUMN_NAME;
+        column.type = element.DATA_TYPE;
+        column.nullable = element.NULLABLE;
+        columns.push(column);        
+    }
+    
+
+    return columns;
+        `(user_tab_columns.table_name = 'USUARIOS' and COLUMN_NAME = 'USUARIO_MODIFICACION')
+    OR 
+        (user_tab_columns.table_name = 'USUARIOS' and COLUMN_NAME = 'USUARIO_INSERCION')`
+}
 /**
  * extrae todos los datos de una tabla y los envía en formato JSON
  * @param {string} tablename nombre de la tabla
@@ -34,10 +89,11 @@ exports.getList = async (tablename) =>{
     try {
         let sql = generateSql(tablename);
         let result = await executeSql(sql.sqlList);  
-        let [data,count] = await Promise.all([catchConsultToJSON(result),countSql(sql.sqlCount)]);
+        let [rows,count] = await Promise.all([catchConsultToJSON(result),countSql(sql.sqlCount)]);
+        let columns = await getColumnsAndMetadata(tablename);
         // let resultJSON = catchConsultToJSON(result);
        
-        return ({data,count});
+        return ({columns,rows,count});
     } catch (error) {
         throw error
     }
@@ -158,9 +214,10 @@ exports.getById = async (tableName,id) =>{
     try {
         let sql = generateSqlById(tableName,id);       
         let result = await executeSql(sql.sqlList);  
-        let [data,count] = await Promise.all([catchConsultToJSON(result),countSql(sql.sqlCount)]);
+        let [rows,count] = await Promise.all([catchConsultToJSON(result),countSql(sql.sqlCount)]);
+        let columns = getColumns(rows);
         // data = await catchDateToUnixTime(data);
-        return ({data,count});
+        return ({rows,columns,count});
     } catch (error) {
         throw error
     }
@@ -369,6 +426,7 @@ let generateSqlDeleteById =(tableName,id)=>{
     let sqlList = `DELETE FROM ${tableName} WHERE ${id.name} = ${id.value}`;
     console.log(sqlList);
     return sqlList;
+  
 }
 /**
  * elimina un registro por el id
