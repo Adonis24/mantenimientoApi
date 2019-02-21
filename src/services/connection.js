@@ -4,6 +4,7 @@ var dbConfig = require('../config');
 
 let conectar =()=>{
     return new Promise((resolve,reject)=>{
+        // console.log('intentado conectar '+JSON.stringify(dbConfig));
         oracledb.getConnection(
             {
               user          : dbConfig.user,
@@ -12,7 +13,8 @@ let conectar =()=>{
             },
             function(err, connection) {
               if (err) {
-                reject(err.message);
+                console.log({err});                
+                reject(err);
                 return;
               }
               resolve(connection);

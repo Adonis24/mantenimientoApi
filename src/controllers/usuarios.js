@@ -1,6 +1,6 @@
 const oracleController = require('../services/oracleControllers');
-const tableName ="EQU_EQUIPO";
-const tableId ="EQU_CODIGO";
+const tableName ="GEN_USU_USUARIO";
+const tableId ="GEN_USU_ID";
 
 exports.get = async (req, res, next)=>{
     try {
@@ -8,10 +8,11 @@ exports.get = async (req, res, next)=>{
         let users = await oracleController.getList(tableName);
         res.send(users);
     } catch (error) {
-        console.log(error);        
-        res.status(500).send(error.message);
+        console.log({error});        
+        res.status(500).send({error});
     }
 }
+
 
 exports.getById = async (req, res, next)=>{
     try {
@@ -25,8 +26,8 @@ exports.getById = async (req, res, next)=>{
         let users = await oracleController.getById(tableName,id);
         res.send(users);
     } catch (error) {
-        console.log(error);        
-        res.status(500).send(error.message);
+        console.log({error});        
+        res.status(500).send({error});
     }
 }
 
@@ -38,8 +39,8 @@ exports.add = async (req, res, next)=>{
         let users = await oracleController.add(tableName,data);
         res.send(users);
     } catch (error) {
-        console.log(error);        
-        res.status(500).send(error).message;
+        console.log({error});        
+        res.status(500).send({error});
     }
 }
 
@@ -50,14 +51,14 @@ exports.update = async (req, res, next)=>{
             res.status(500).send('el id no se ha encontrado como parámetro');
         }
         let id = {};
-        id.value = req.params.id    
+        id.value = req.body.id    
         id.name = tableId
         let data = req.body;
         let users = await oracleController.updateById(tableName,data,id);
         res.send(users);
     } catch (error) {
-        console.log(error);        
-        res.status(500).send(error.message);
+        console.log({error});        
+        res.status(500).send({error});
     }
 }
 

@@ -4,7 +4,9 @@ let connection;
 
 require('../services/connection').conectar().then(connectionResp=>{
     connection =connectionResp;
-    console.log('database conected');
+    console.log('database conected');    
+},error=>{    
+    console.log('probablemente el usuario o la contraseña estén mal, o puede pasar que el cliente oracle no esté instalado en el servidor');
     
 });
 /**
@@ -12,7 +14,9 @@ require('../services/connection').conectar().then(connectionResp=>{
  * @param {string} string nombre a capitalzar
  */
 let  capitalizeFirstLetter =(string)=> {
-    return string.charAt(0).toUpperCase() + string.slice(1);
+    let str = string.charAt(0).toUpperCase() + string.slice(1);
+    // let str = str.replace(/_/g,` `);
+    return str;
 }
 
 /**
@@ -49,7 +53,7 @@ let getColumns =(rows)=>{
  * @param {string} tablename nombre de la tabla
  * @param {*} columnsOfConsult 
  */
-let getColumnsAndMetadata =async (tablename,columnsOfConsult)=>{
+let getColumnsAndMetadata =async (tablename)=>{
     let select =
     `SELECT 
         user_tab_columns.table_name,user_tab_columns.DATA_TYPE,user_tab_columns.COLUMN_NAME,user_tab_columns.NULLABLE
@@ -62,7 +66,7 @@ let getColumnsAndMetadata =async (tablename,columnsOfConsult)=>{
     let columnsAndMetadata = await executeSql(select);  
     let columnsResp = await catchConsultToJSON(columnsAndMetadata);
     let columns = [];
-    console.log(columnsResp)
+    // console.log(columnsResp)
     for (let i = 0; i < columnsResp.length; i++) {
         const element = columnsResp[i];    
         let column ={};
@@ -82,15 +86,38 @@ let getColumnsAndMetadata =async (tablename,columnsOfConsult)=>{
 }
 /**
  * extrae todos los datos de una tabla y los envía en formato JSON
+ * @param {string} sql nombre de la tabla
+ * @returns {data,count} data = JSON (datos) , count = int contidad de registros
+ */
+exports.getConsult = async (sql) =>{
+    try {
+        // let sql = generateSql(tablename);
+        // let columns = await getColumnsAndMetadata(tableName); //TODO: ponerlo en un promise all
+        let result = await executeSql(sql);  
+    
+        let rows = await catchConsultToJSON(result);
+        // let [rows,count] = await Promise.all([catchConsultToJSON(result),countSql(sql.sqlCount)]);
+        
+        // let resultJSON = catchConsultToJSON(result);
+       
+        return ({rows});
+    } catch (error) {
+        throw error
+    }
+}
+/**
+ * extrae todos los datos de una tabla y los envía en formato JSON
  * @param {string} tablename nombre de la tabla
  * @returns {data,count} data = JSON (datos) , count = int contidad de registros
  */
 exports.getList = async (tablename) =>{
     try {
-        let sql = generateSql(tablename);
+        let [sql,columns] = await Promise.all([generateSql(tablename),getColumnsAndMetadata(tablename)])
+        // let columns = await getColumnsAndMetadata(tablename); //TODO: ponerlo en un promise all
+        
         let result = await executeSql(sql.sqlList);  
         let [rows,count] = await Promise.all([catchConsultToJSON(result),countSql(sql.sqlCount)]);
-        let columns = await getColumnsAndMetadata(tablename);
+        
         // let resultJSON = catchConsultToJSON(result);
        
         return ({columns,rows,count});
@@ -119,15 +146,30 @@ exports.getListJSON = async (sql) =>{
  * y la transforma en un json de tipo clave valor
  * @param {JSON} consult consulta  proveniente de oracle
  */
-let catchConsultToJSON = async (consult) =>{
- 
+let catchConsultToJSON = async (consult/*,columnsMetadata = null*/) =>{
+  
+    
     let resultJSON =[];
     for (let i = 0; i < consult.rows.length; i++) {
         resultJSON.push({});
         for (let j = 0; j < consult.rows[i].length; j++) {
-            // console.log({metadata:result.metaData[j].name} ,{j});
-            // console.log({rows:result.rows[i][j]},{i},{j});                        
-            resultJSON[i][consult.metaData[j].name] = consult.rows[i][j];    
+            resultJSON[i][consult.metaData[j].name] = consult.rows[i][j]; 
+            // if(columnsMetadata !== null){
+            //     let colMetedata = columnsMetadata.filter(col => col.key === consult.metaData[j].name)[0];        
+            //     if(colMetedata.type.toLowerCase() === 'date'){
+            //         console.log(consult.metaData[j].name);
+            //         if(consult.rows[i][j] !== null){
+            //             resultJSON[i][consult.metaData[j].name] = new Date(consult.rows[i][j]);    
+            //         }else{
+            //             resultJSON[i][consult.metaData[j].name] = consult.rows[i][j];    
+            //         }
+                    
+            //     }else{
+            //         resultJSON[i][consult.metaData[j].name] = consult.rows[i][j];    
+            //     }
+            // }else{
+            //     resultJSON[i][consult.metaData[j].name] = consult.rows[i][j];    
+            // }
         }
     }
     return resultJSON;
@@ -150,8 +192,8 @@ let executeSql =(sql)=>{
         connection.execute(sql,
             function(err, result) {
               if (err) {
-                console.error(err.message);
-                reject(err.message)
+                console.error(err);
+                reject(err)
                 //doRelease(connection);
                 return;
               }
@@ -228,62 +270,77 @@ let catchType = (DATA_TYPE)=>{
     }else if(DATA_TYPE.toUpperCase() === "NUMBER"){
         return 'number'
     }else if(DATA_TYPE.toUpperCase() === "DATE"){
-        return 'number'
+        return typeof DATA_TYPE
     }else if(DATA_TYPE.toUpperCase() === "BOOLEAN"){
         return 'boolean'
     }else if(DATA_TYPE.toUpperCase() === "CLOB"){
         return 'string'
+    }else if(DATA_TYPE.toUpperCase() === "CHAR"){
+        return 'string'
     }else{
+        console.log(`Error de lógica backend, el typo de dato ${DATA_TYPE.toUpperCase()} no lo ha definido el programador`);
         return -1
     }
 }
 let validateDateInsert = async (tableName,data)=>{
     let keys = [];
     let values = [];
-    let metaData = await getMetadataOfTable(tableName);
-   
+    // let metaData = await getMetadataOfTable(tableName);
+    console.log({tableName});
+    
+    let metaData = await getColumnsAndMetadata(tableName);
+    // console.log({metaData});
     
     for (const key in data) {
-        let tableAttribute = metaData.filter(resp => resp.COLUMN_NAME === key);
-        
-        
+        let tableAttribute = metaData.filter(resp => resp.key === key);
         // verificar si 
         if(tableAttribute.length > 0){
             tableAttribute = tableAttribute[0];
-            console.log({tableAttribute:tableAttribute.DATA_TYPE});            
-            if(typeof data[key] === catchType(tableAttribute.DATA_TYPE)){
-                if(tableAttribute.DATA_TYPE.toUpperCase() === "VARCHAR2"){
+            // console.log({tableAttribute:tableAttribute.DATA_TYPE});   
+            console.log({tableAttribute});
+                     
+            if(typeof data[key] === catchType(tableAttribute.type)){
+                if(tableAttribute.type.toUpperCase() === "VARCHAR2"){
                     values.push(`'`+data[key]+`'`);
-                }else if(tableAttribute.DATA_TYPE.toUpperCase() === "NUMBER"){
+                }else if(tableAttribute.type.toUpperCase() === "NUMBER"){
                     values.push(data[key]);
-                }else if(tableAttribute.DATA_TYPE.toUpperCase() === "DATE"){
+                }else if(tableAttribute.type.toUpperCase() === "DATE"){
                     // values.push('DATE '+ moment.unix(data[key])).utc();
                     values.push(`TO_DATE('` +new Date(data[key]).toLocaleString()+`', 'YYYY-MM-DD HH24:MI:SS')`); 
-                }else if(tableAttribute.DATA_TYPE.toUpperCase() === "BOOLEAN"){
+                }else if(tableAttribute.type.toUpperCase() === "BOOLEAN"){
                     values.push(data[key]);
-                }else if(tableAttribute.DATA_TYPE.toUpperCase() === "CLOB"){
+                }else if(tableAttribute.type.toUpperCase() === "CLOB"){
+                    values.push(`'`+data[key]+`'`);
+                }else if(tableAttribute.type.toUpperCase() === "CHAR"){
                     values.push(`'`+data[key]+`'`);
                 }else{
-                    throw `el tipo de dato: ${tableAttribute.DATA_TYPE.toUpperCase()} no está definido en el servicio1`
+                    throw `el tipo de dato: ${tableAttribute.type.toUpperCase()} no está definido en el servicio1`
                 }
             }else{
                 // si el dato es null verificar si se puede enviar null
-                
-                if(data[key] === null){
-                    if(tableAttribute.NULLABLE.toUpperCase() === 'Y'){
+                if(catchType(tableAttribute.type) === 'number'){
+                    let number_data = Number.parseFloat(data[key]);
+                        if (Number.isNaN(number_data)) {
+                            throw `el valor ${data[key]} no es de tipo ${tableAttribute.type} llave ${key} valor ${data[key]}`
+                        }else {
+                            data[key] = number_data; 
+                            values.push(data[key]);
+                        }
+                }else  if(data[key] === null){
+                    if(tableAttribute.nullable.toUpperCase() === 'Y'){
                         values.push(`'`+data[key]+`'`);
                     }else{
-                        throw `el valor ${data[key]} no es de tipo ${catchType(tableAttribute.DATA_TYPE)}`
+                        throw `el valor ${data[key]} no es de tipo ${catchType(tableAttribute.type)} llave ${key} valor ${data[key]}`
                     }
                 }else{
-                    throw `el dato: ${key}:${data[key]} ano es tipo  ${tableAttribute.DATA_TYPE.toUpperCase()}`
+                    throw `el dato: ${key}:${data[key]} no es tipo  ${tableAttribute.type.toUpperCase()}`
                 }
             }            
             keys.push(key);
             
         }else{
             // el dato enviado no está relacionado en la base de datos
-            console.log('el  dato no está de relacionada en la base de datos: '+data[key]);
+            console.log('el  dato '+ data[key]+' no está de relacionada en la base de llave: '+key);
             
         }
         
@@ -293,7 +350,7 @@ let validateDateInsert = async (tableName,data)=>{
         //     values.push(data[key])
         // }
     }
-    console.log({values});
+    // console.log({values});
     return ({keys,values});
 }
 
@@ -329,10 +386,12 @@ let generateSqlAdd = async (tableName,data)=>{
  */
 exports.add = async (tableName,data) =>{
     try {
-        let sqlAdd = await generateSqlAdd(tableName,data);       
+        let sqlAdd = await generateSqlAdd(tableName,data); 
+        console.log({sqlAdd});        
         let result = await executeSql(sqlAdd);       
         return result;
     } catch (error) {
+        console.log({error});        
         throw error
     }
 }
@@ -354,7 +413,7 @@ let getSetValues= async(tableName,data)=>{
     let stringResp = "";
     // let iAux = 0;
     let {keys,values}= await validateDateInsert(tableName,data);
-    console.log({keys,values});
+    // console.log({keys,values});
     
     for (let i = 0; i < keys.length; i++) {
         if(i !== 0){
@@ -393,9 +452,9 @@ let getSetValues= async(tableName,data)=>{
  * @returns {JSON} {sqlList,sqlCount}, sqlList = select * from ..where id  = 1 , sqlCount = select count(*) ..where id  = 1
  */
 let generateSqlUpdateById =async (tableName,data,id)=>{
-    let setValues = await getSetValues(tableName,data);
+    let setValues = await getSetValues(tableName,data);    
     let sqlList = `UPDATE ${tableName} SET ${setValues} WHERE ${id.name} = ${id.value}`;
-    console.log(sqlList);
+    // console.log(sqlList);
     return sqlList;
 }
 
@@ -408,8 +467,11 @@ let generateSqlUpdateById =async (tableName,data,id)=>{
 exports.updateById = async (tableName,data,id) =>{
     try {
         // console.log({tableName,data,id});        
-        let sqlUpdate = await generateSqlUpdateById(tableName,data,id);       
-        let result = await executeSql(sqlUpdate);       
+        let sqlUpdate = await generateSqlUpdateById(tableName,data,id); 
+        console.log(sqlUpdate);              
+        let result = await executeSql(sqlUpdate);     
+        // console.log({result});
+          
         return result;
     } catch (error) {
         throw error
@@ -441,6 +503,16 @@ exports.deleteById = async (tableName,id) =>{
     } catch (error) {
         throw error
     }
+}
+/**
+ * crea un numero consecutivo den la tabla en el id
+ * @param {string} tableName nombre de la tabla de la base de datos
+ * @param {string} tableId id de la tabla
+ */
+exports.idAutoIncrement = async(tableName,tableId)=>{
+    let sqlMaxId = `SELECT NVL(MAX(T.${tableId}), 0) AS MAX_VAL FROM ${tableName} T`;
+    let maxId = await countSql(sqlMaxId);
+    return (maxId+1)
 }
 
 let getMetadataOfTable = async (tableName)=>{
