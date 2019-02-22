@@ -110,9 +110,13 @@ exports.getConsult = async (sql) =>{
  * @param {string} tablename nombre de la tabla
  * @returns {data,count} data = JSON (datos) , count = int contidad de registros
  */
-exports.getList = async (tablename) =>{
+exports.getList = async (tablename,query) =>{
     try {
-        let [sql,columns] = await Promise.all([generateSql(tablename),getColumnsAndMetadata(tablename)])
+        console.log({tablename,query});
+        
+        let columns = await getColumnsAndMetadata(tablename)
+        let sql = await generateSql(tablename,columns,query);
+        // let [sql,columns] = await Promise.all([generateSql(tablename),getColumnsAndMetadata(tablename)])
         // let columns = await getColumnsAndMetadata(tablename); //TODO: ponerlo en un promise all
         
         let result = await executeSql(sql.sqlList);  
@@ -219,12 +223,47 @@ exports.executeSqlAndExtractJSON = executeSqlAndExtractJSON;
  * @param {string} tableName nombre de la tabla de la base de datos
  * @returns {JSON} {sqlList,sqlCount}, sqlList = select * from .. , sqlCount = select count(*) ..
  */
-let generateSql =(tableName)=>{
-    let sqlList = `SELECT * FROM ${tableName}`;
-    let sqlCount =  `SELECT COUNT(*) FROM ${tableName}`;
-    return {sqlList,sqlCount};
+let generateSql =(tableName,columns,query ={})=>{
+    console.log({query});
+    
+    if(Object.keys(query).length > 0){
+        let sqlList = `SELECT * FROM ${tableName} WHERE ${whereList(columns,query)}`;
+        let sqlCount =  `SELECT COUNT(*) FROM ${tableName} WHERE ${whereList(columns,query)}`;
+        console.log({sqlList,sqlCount});
+        
+        return {sqlList,sqlCount};
+    }else{
+        let sqlList = `SELECT * FROM ${tableName}`;
+        let sqlCount =  `SELECT COUNT(*) FROM ${tableName}`;
+        return {sqlList,sqlCount};
+    }
+   
 }
 
+/**
+ * extrae una consulta and where y lo compara con los metadatos 
+ * para saber si es posible o nó buscar este campo en una cosulta 
+ * @param {Array} columns columnas extraidas de los metadatos
+ * @param {JSON} query query enviado por el usuario
+ */
+let whereList=(columns,query)=>{
+    let whereStr = '';
+    for (const key in query) {
+        let index = columns.findIndex(col=> col.key.toUpperCase() === key.toUpperCase());
+        if(index !== -1){
+            //TODO: validar que los datos que lleguen sean del tipo de dato correcto
+            // ejemplo   typeOf query[key] === columns[index].type         
+            if(whereStr === ''){
+                whereStr+= `${key.toUpperCase()} = ${query[key]}`
+            }else{
+                whereStr+= ` AND ${key.toUpperCase()} = ${query[key]}`
+            }
+            
+        }
+        
+    }
+    return whereStr;
+}
 /**
  * - genera las cosuntas necesarias que se necesitan para traer los datos de las listas y count
  * @param {string} tableName nombre de la tabla de la base de datos

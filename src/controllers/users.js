@@ -7,11 +7,11 @@ const tableId ="USU_ID_TABLA";
 exports.get = async (req, res, next)=>{
     try {
         // let users = await getTest();
-        let users = await oracleController.getList(tableName);
+        let users = await oracleController.getList(tableName,req.query);
         res.send(users);
     } catch (error) {
         console.log(error);        
-        res.status(500).send(error.message);
+        res.status(500).send({error:error.message});
     }
 }
 
@@ -19,7 +19,7 @@ exports.getById = async (req, res, next)=>{
     try {
         // let users = await getTest();
         if(!req.params.id){
-            res.status(500).send('el id no se ha encontrado como parámetro');
+            res.status(500).send({error:'el id no se ha encontrado como parámetro'});
         }
         let id = {};
         id.value = req.params.id    
@@ -28,7 +28,7 @@ exports.getById = async (req, res, next)=>{
         res.send(users);
     } catch (error) {
         console.log(error);        
-        res.status(500).send(error.message);
+        res.status(500).send({error:error.message});
     }
 }
 
@@ -41,7 +41,7 @@ exports.add = async (req, res, next)=>{
         res.send(users);
     } catch (error) {
         console.log(error);        
-        res.status(500).send(error).message;
+        res.status(500).send({error:error.message});
     }
 }
 
@@ -60,7 +60,7 @@ exports.update = async (req, res, next)=>{
         res.send(users);
     } catch (error) {
         console.log(error);        
-        res.status(500).send(error.message);
+        res.status(500).send({error:error.message});
     }
 }
 
@@ -99,7 +99,7 @@ where t.table_name in ('USUARIOS')`
             res.send(users);
         } catch (error) {
             console.log(error);        
-            res.status(500).send(error.message);
+            res.status(500).send({error:error.message});
         }
 }
 
@@ -113,7 +113,7 @@ exports.prueba2 = async (req, res, next)=>{
             res.send({date1,date2,date3});
         } catch (error) {
             console.log(error);        
-            res.status(500).send(error.message);
+            res.status(500).send({error:error.message});
         }
 }
 
