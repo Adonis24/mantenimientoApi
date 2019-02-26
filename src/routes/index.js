@@ -37,6 +37,10 @@ const manTarea = require('../controllers/manTarea');
 const genUnidad = require('../controllers/genUnidad');
 const testPdf = require('../controllers/testPdf');
 
+const genCompania = require('../controllers/genCompania');
+const genCompaniaSede = require('../controllers/genCompaniaSede');
+
+
 
 router.get('/users',users.get);
 router.get('/users/:id',users.getById);
@@ -71,13 +75,35 @@ router.put('/manManten',manManten.update);
 router.delete('/manManten/:id',manManten.delete);
 router.get('/manManten/consult/estadoActivo',manManten.getByActive);
 
-router.get('/genEstado',genEstado.get);
-router.get('/genEstado/:id',genEstado.getById);
-router.post('/genEstado',genEstado.add);
-router.put('/genEstado',genEstado.update);
-router.delete('/genEstado/:id',genEstado.delete);
+router.get('/genEstado',genEstado.get);// llama todos los campos de la tabla estado
+router.get('/genEstado/:id',genEstado.getById);// consulta el campo ID  por la llave primaria
+router.post('/genEstado',genEstado.add);// envia insert
+router.put('/genEstado',genEstado.update);// put actuliza
+router.delete('/genEstado/:id',genEstado.delete);//elimina
 
 // router.get('/genEstado/consult/pdf',genEstado.genPdf);
+
+router.get('/genCompania',genCompania.get);// llama todos los campos de la tabla estado
+router.get('/genCompania/:id',genCompania.getById);// consulta el campo ID  por la llave primaria
+router.post('/genCompania',genCompania.add);// envia insert
+router.put('/genCompania',genCompania.update);// put actuliza
+router.delete('/genCompania/:id',genCompania.delete);//elimina
+
+router.get('/genCompaniaSede',genCompaniaSede.get);// llama todos los campos de la tabla estado
+router.get('/genCompaniaSede/:id',genCompaniaSede.getById);// consulta el campo ID  por la llave primaria
+router.post('/genCompaniaSede',genCompaniaSede.add);// envia insert
+router.put('/genCompaniaSede',genCompaniaSede.update);// put actuliza
+router.delete('/genCompaniaSede/:id',genCompaniaSede.delete);//elimina
+
+
+const genEstado2 = require('../controllers/genEstado2')
+router.get('/genEstado2',genEstado2.get);// llama todos los campos de la tabla estado
+router.get('/genEstado2/:id',genEstado2.getById);// consulta el campo ID  por la llave primaria
+router.post('/genEstado2',genEstado2.add);// envia insert
+router.put('/genEstado2',genEstado2.update);// put actuliza
+router.delete('/genEstado2/:id',genEstado2.delete);//elimina
+
+
 
 router.get('/genUsuarios',genUsuarios.get);
 router.get('/genUsuarios/:id',genUsuarios.getById);
