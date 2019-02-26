@@ -35,6 +35,7 @@ const getTipoCombustible = require('../controllers/getTipoCombustible');
 const genUnidadMedida = require('../controllers/genUnidadMedida');
 const manTarea = require('../controllers/manTarea');
 const genUnidad = require('../controllers/genUnidad');
+const genPerfil = require('../controllers/genPerfil');
 const testPdf = require('../controllers/testPdf');
 
 const genCompania = require('../controllers/genCompania');
@@ -179,6 +180,12 @@ router.get('/genUnidad/:id',genUnidad.getById);
 router.post('/genUnidad',genUnidad.add);
 router.put('/genUnidad',genUnidad.update);
 router.delete('/genUnidad/:id',genUnidad.delete);
+
+router.get('/genPerfil',genPerfil.get);
+router.get('/genPerfil/:id',genPerfil.getById);
+router.post('/genPerfil',genPerfil.add);
+router.put('/genPerfil',genPerfil.update);
+router.delete('/genPerfil/:id',genPerfil.delete);
 
 
 module.exports = router;
