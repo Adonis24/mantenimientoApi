@@ -34,6 +34,7 @@ const genMarcaLinea = require('../controllers/genMarcaLinea');
 const getTipoCombustible = require('../controllers/getTipoCombustible');
 const genUnidadMedida = require('../controllers/genUnidadMedida');
 const manTarea = require('../controllers/manTarea');
+const genUnidad = require('../controllers/genUnidad');
 const testPdf = require('../controllers/testPdf');
 
 
@@ -146,6 +147,12 @@ router.delete('/manTarea/:id',manTarea.delete);
 router.get('/manTarea/consult/estadoActivo',manTarea.getByActive);
 
 router.get('/testPdf',testPdf.genPdfPipe);
+
+router.get('/genUnidad',genUnidad.get);
+router.get('/genUnidad/:id',genUnidad.getById);
+router.post('/genUnidad',genUnidad.add);
+router.put('/genUnidad',genUnidad.update);
+router.delete('/genUnidad/:id',genUnidad.delete);
 
 
 module.exports = router;
